@@ -19,6 +19,7 @@ find_python(){
 
 find_python python
 find_python pyston
+find_python python3
 
 PS3="Choose: "
 
