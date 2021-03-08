@@ -6,6 +6,10 @@ if test -f "$FILE"; then
 fi
 cp ./.aws/credentials $FILE
 
+sudo groupadd docker
+sudo gpasswd -a $USER docker
+newgrp docker
+
 declare -a ITEMS
 ITEMS=($(docker images --format "{{.Repository}}={{.ID}}"))
 
