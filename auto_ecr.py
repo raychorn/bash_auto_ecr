@@ -16,6 +16,8 @@ __docker_hello_world__ = ['docker', 'run', 'hello-world']
 __aws_cli__ = 'aws-cli/2'
 __hello_from_docker__ = 'Hello from Docker!'
 
+__docker_pulls__ = './script/pulls.sh'
+
 name_to_id = {}
 id_to_name = {}
 
@@ -124,7 +126,7 @@ if (__name__ == '__main__'):
     handle_stdin(result.stdout, callback=parse_docker_image_ls, callback2=handle_docker_item, verbose=False)
     if (1):
         print(len(id_to_name))
-        with open('pulls.sh', 'w') as fOut:
+        with open(__docker_pulls__, 'w') as fOut:
             print('#!/usr/bin/env bash\n', file=fOut)
             for k,v in id_to_name.items():
                 print('{} -> {}'.format(k,v))
