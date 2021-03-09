@@ -7,15 +7,33 @@ import mujson as json
 __aws_version__ = ['aws', '--version']
 __docker_images__ = ['docker', 'images', '--format', '{{.Repository}}:{{.Tag}}={{.ID}}']
 
+__aws_cli_installer__ = ['./scripts/aws-cli-installer.sh']
+
 __aws_cli__ = 'aws-cli/2'
 
 name_to_id = {}
 id_to_name = {}
 
+def handle_aws_cli_installer(item):
+    print('DEBUG:  handle_aws_cli_installer --> {}'.format(item))
+    return True
+
+
+def install_aws_cli():
+    print('Installing aws cli.')
+    result = subprocess.run(__aws_cli_installer__, stdout=subprocess.PIPE)
+    handle_stdin(result.stdout, callback2=handle_aws_cli_installer, verbose=True)
+
+
 def handle_aws_version(item):
-    if (item.find(__aws_cli__) == -1):
-        pass
-    assert item.find(__aws_cli__) > -1, 'Missing {}'.format(__aws_cli__)
+    try:
+        if (item.find(__aws_cli__) == -1):
+            return False
+        assert item.find(__aws_cli__) > -1, 'Missing {}'.format(__aws_cli__)
+    except:
+        return False
+    return True
+
 
 def parse_docker_image_ls(line):
     return line.replace("b'", "").split('=')
@@ -47,8 +65,13 @@ def handle_stdin(stdin, callback=None, verbose=False, callback2=None):
 
 
 if (__name__ == '__main__'):
-    result = subprocess.run(__aws_version__, stdout=subprocess.PIPE)
-    handle_stdin(result.stdout, callback2=handle_aws_version, verbose=False)
+    while (1):
+        try:
+            result = subprocess.run(__aws_version__, stdout=subprocess.PIPE)
+            handle_stdin(result.stdout, callback2=handle_aws_version, verbose=False)
+            break
+        except:
+            install_aws_cli()
 
     result = subprocess.run(__docker_images__, stdout=subprocess.PIPE)
     handle_stdin(result.stdout, callback=parse_docker_image_ls, callback2=handle_docker_item, verbose=False)
