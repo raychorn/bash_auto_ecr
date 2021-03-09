@@ -27,7 +27,7 @@ Add the connected user "$USER" to the docker group. Change the user name to matc
 
  sudo gpasswd -a $USER docker
 
-Either do a newgrp docker or log out/in to activate the changes to groups.
+Either do a "newgrp docker" or log out/in to activate the changes to groups.
 
 ### Installing
 

@@ -9,10 +9,32 @@ __docker_images__ = ['docker', 'images', '--format', '{{.Repository}}:{{.Tag}}={
 
 __aws_cli_installer__ = ['./scripts/aws-cli-installer.sh']
 
+__resolve_docker_issues__ = ['./scripts/resolve-docker-issues.sh']
+
+__docker_hello_world__ = ['docker', 'run', 'hello-world']
+
 __aws_cli__ = 'aws-cli/2'
+__hello_from_docker__ = 'Hello from Docker!'
 
 name_to_id = {}
 id_to_name = {}
+
+def handle_resolve_docker_issues(item):
+    print('DEBUG:  handle_resolve_docker_issues --> {}'.format(item))
+    return True
+
+
+def handle_docker_hello(item):
+    try:
+        __is__ = item.find(__hello_from_docker__)
+        if (__is__ == -1):
+            return False
+        assert (__is__ > -1), 'Missing {}'.format(__hello_from_docker__)
+        print('{}'.format(item))
+    except:
+        return False
+    return True
+
 
 def handle_aws_cli_installer(item):
     print('DEBUG:  handle_aws_cli_installer --> {}'.format(item))
@@ -25,11 +47,20 @@ def install_aws_cli():
     handle_stdin(result.stdout, callback2=handle_aws_cli_installer, verbose=True)
 
 
+def resolve_docker_issues():
+    print('Resolving docker issues.')
+    result = subprocess.run(__resolve_docker_issues__, stdout=subprocess.PIPE)
+    handle_stdin(result.stdout, callback2=handle_resolve_docker_issues, verbose=True)
+
+
+
 def handle_aws_version(item):
     try:
-        if (item.find(__aws_cli__) == -1):
+        __is__ = item.find(__aws_cli__)
+        if (__is__ == -1):
             return False
-        assert item.find(__aws_cli__) > -1, 'Missing {}'.format(__aws_cli__)
+        assert (__is__ > -1), 'Missing {}'.format(__aws_cli__)
+        print('{}'.format(item))
     except:
         return False
     return True
@@ -65,6 +96,7 @@ def handle_stdin(stdin, callback=None, verbose=False, callback2=None):
 
 
 if (__name__ == '__main__'):
+    print('Checking for aws cli version 2.')
     while (1):
         try:
             result = subprocess.run(__aws_version__, stdout=subprocess.PIPE)
@@ -72,6 +104,21 @@ if (__name__ == '__main__'):
             break
         except:
             install_aws_cli()
+        finally:
+            print('Warning: Cannot resolve aws cli issues automatically. Please run the script manually. See the "script" directory.')
+            break
+
+    print('Checking for docker.')
+    while (1):
+        try:
+            result = subprocess.run(__docker_hello_world__, stdout=subprocess.PIPE)
+            handle_stdin(result.stdout, callback2=handle_docker_hello, verbose=False)
+            break
+        except:
+            resolve_docker_issues()
+        finally:
+            print('Warning: Cannot resolve aws cli issues automatically. Please run the script manually. See the "script" directory.')
+            break
 
     result = subprocess.run(__docker_images__, stdout=subprocess.PIPE)
     handle_stdin(result.stdout, callback=parse_docker_image_ls, callback2=handle_docker_item, verbose=False)
