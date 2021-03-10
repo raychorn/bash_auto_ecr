@@ -8,7 +8,7 @@
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
-            "program": "${file}",
+            "program": "/home/raychorn/#projects/bash_auto_ecr/auto_ecr.py",
             "console": "integratedTerminal"
         }
     ]
