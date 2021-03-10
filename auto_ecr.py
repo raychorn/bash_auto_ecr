@@ -4,10 +4,7 @@ import shutil
 import subprocess
 import traceback
 
-try:
-    import cysimdjson as json
-except ImportError:
-    import mujson as json
+import mujson as json
 
 __aws_creds_dest__ = '~/.aws/credentials'
 __aws_creds_src__ = './.aws/credentials'
@@ -47,6 +44,10 @@ id_to_name = {}
 response_vectors = {}
 
 current_aws_creds = {}
+
+response_content = []
+
+ignoring_image_names = ["hello-world"]
 
 def handle_resolve_docker_issues(item):
     print('DEBUG:  handle_resolve_docker_issues --> {}'.format(item))
@@ -138,7 +139,13 @@ def handle_docker_item(item):
         id_to_name[item[-1]] = item[0]
 
 
-def handle_stdin(stdin, callback=None, verbose=False, callback2=None):
+def json_loads(content):
+    content = content.replace("b\'", "").replace("\'", "")
+    return json.loads(content)
+
+
+def handle_stdin(stdin, callback=None, verbose=False, callback2=None, is_json=False):
+    response_content = []
     lines = str(stdin).split('\\n')
     for line in lines:
         resp = None
@@ -161,7 +168,12 @@ def handle_stdin(stdin, callback=None, verbose=False, callback2=None):
                 exc_info = sys.exc_info()
                 traceback.print_exception(*exc_info)
                 del exc_info
-    return resp
+        response_content.append(item)
+    __content = ''
+    if (is_json):
+        __content = ''.join(response_content)
+        data = json_loads(__content)
+    return resp if (resp is not None) else data if (is_json) else __content
 
 
 if (__name__ == '__main__'):
@@ -224,6 +236,22 @@ if (__name__ == '__main__'):
     
     print('{}'.format(__aws_cli_ecr_describe_repos__))
     result = subprocess.run(__aws_cli_ecr_describe_repos__, stdout=subprocess.PIPE)
-    resp = handle_stdin(result.stdout, callback2=handle_ecr_describe_repos, verbose=False)
-    assert resp == True, 'Cannot "{}".  Please resolve.'.format(__aws_cli_ecr_describe_repos__)
+    resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=True)
+    assert 'repositories' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(__aws_cli_ecr_describe_repos__)
     
+    print(json.dumps(resp, indent=3))
+    
+    create_the_repos = []
+    the_repositories = resp.get('repositories', [])
+    for image_id,image_name in id_to_name.items():
+        __is__ = False
+        possible_repo_name = image_name.split(':')[0]
+        if (possible_repo_name not in ignoring_image_names):
+            for repo in the_repositories:
+                if (possible_repo_name == repo.get('repositoryName')):
+                    __is__ = True
+                    continue
+            if (not __is__):
+                create_the_repos.append(possible_repo_name)
+                
+    print(json.dumps({'create_the_repos': create_the_repos}, indent=3))

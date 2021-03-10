@@ -55,7 +55,6 @@ then
     pip install --upgrade pip
 
     sudo apt-get install python$vv-dev -y
-    pip install  git+https://github.com/TeskaLabs/cysimdjson.git
 
     if [[ -f $REQS ]]
     then
