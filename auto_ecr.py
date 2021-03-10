@@ -4,12 +4,19 @@ import shutil
 import subprocess
 import traceback
 
-import mujson as json
+try:
+    import cysimdjson as json
+except ImportError:
+    import mujson as json
 
 __aws_creds_dest__ = '~/.aws/credentials'
 __aws_creds_src__ = './.aws/credentials'
 
+__aws_config_dest__ = '~/.aws/config'
+__aws_config_src__ = './.aws/config'
+
 __cat_aws_creds__ = ['cat', __aws_creds_dest__]
+__cat_aws_config__ = ['cat', __aws_config_dest__]
 
 __aws_version__ = ['aws', '--version']
 __docker_images__ = ['docker', 'images', '--format', '{{.Repository}}:{{.Tag}}={{.ID}}']
@@ -19,6 +26,14 @@ __aws_cli_installer__ = ['./scripts/aws-cli-installer.sh']
 __resolve_docker_issues__ = ['./scripts/resolve-docker-issues.sh']
 
 __docker_hello_world__ = ['docker', 'run', 'hello-world']
+
+__aws_docker_login__ = ['aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin http://link-for-your-repository-goes-here']
+__aws_docker_login__ = __aws_docker_login__[0].split()
+
+__aws_cli_login__ = ['aws ecr get-login --no-include-email --region us-east-2']
+__aws_cli_login__ = __aws_cli_login__[0].split()
+
+__aws_cli_ecr_describe_repos__ = ['aws', 'ecr', 'describe-repositories']
 
 __aws_cli__ = 'aws-cli/2.'
 __hello_from_docker__ = 'Hello from Docker!'
@@ -82,7 +97,7 @@ def handle_aws_version(item):
             return False
     return True
 
-def resolve_missing_aws_creds_dest(src_name, dest_name):
+def resolve_missing_file_dest(src_name, dest_name):
     from pathlib import Path
 
     if (dest_name.find('~') > -1):
@@ -96,8 +111,21 @@ def resolve_missing_aws_creds_dest(src_name, dest_name):
         assert os.path.exists(dest_name) and os.path.isfile(dest_name), 'Missing {}. Please resolve by ensuring {} is available.'.format(dest_name, src_name)
 
 def handle_cat_aws_creds(item):
-    resolve_missing_aws_creds_dest(__aws_creds_src__, __aws_creds_dest__)
+    resolve_missing_file_dest(__aws_creds_src__, __aws_creds_dest__)
     return os.path.exists(os.path.expanduser(__aws_creds_dest__)) and os.path.isfile(os.path.expanduser(__aws_creds_dest__))
+
+def handle_cat_aws_config(item):
+    resolve_missing_file_dest(__aws_config_src__, __aws_config_dest__)
+    return os.path.exists(os.path.expanduser(__aws_config_dest__)) and os.path.isfile(os.path.expanduser(__aws_config_dest__))
+
+
+
+def handle_aws_login(item):
+    return None
+
+
+def handle_ecr_describe_repos(item):
+    return None
 
 
 def parse_docker_image_ls(line):
@@ -142,6 +170,17 @@ if (__name__ == '__main__'):
     resp = handle_stdin(result.stdout, callback2=handle_cat_aws_creds, verbose=False)
     assert resp == True, 'Cannot verify the aws creds.  Please resolve.'
 
+    print('Checking for aws config.')
+    result = subprocess.run(__cat_aws_config__, stdout=subprocess.PIPE)
+    resp = handle_stdin(result.stdout, callback2=handle_cat_aws_config, verbose=False)
+    assert resp == True, 'Cannot verify the aws config.  Please resolve.'
+
+    if (0):
+        print('Using the aws creds.')
+        result = subprocess.run(__aws_cli_login__, stdout=subprocess.PIPE)
+        resp = handle_stdin(result.stdout, callback2=handle_aws_login, verbose=False)
+        assert resp == True, 'Cannot login using the aws creds.  Please resolve.'
+
     print('Checking for aws cli version 2.')
     resp = None
     while (1):
@@ -180,5 +219,11 @@ if (__name__ == '__main__'):
                 print('{} -> {}'.format(k,v))
                 print('docker pull {}'.format(v), file=fOut)
                 
-    print('resp -> {}'.format(resp))
+    assert len(id_to_name) > 0, 'There are no docker images to handle.  Please resolve.'
+    print('There are {} docker images.'.format(len(id_to_name)))
+    
+    print('{}'.format(__aws_cli_ecr_describe_repos__))
+    result = subprocess.run(__aws_cli_ecr_describe_repos__, stdout=subprocess.PIPE)
+    resp = handle_stdin(result.stdout, callback2=handle_ecr_describe_repos, verbose=False)
+    assert resp == True, 'Cannot "{}".  Please resolve.'.format(__aws_cli_ecr_describe_repos__)
     
