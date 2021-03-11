@@ -32,6 +32,8 @@ __aws_cli_login__ = __aws_cli_login__[0].split()
 
 __aws_cli_ecr_describe_repos__ = ['aws', 'ecr', 'describe-repositories']
 
+__aws_cli_ecr_create_repo__ = ['aws', 'ecr', 'create-repository', '--repository-name']
+
 __aws_cli__ = 'aws-cli/2.'
 __hello_from_docker__ = 'Hello from Docker!'
 __no_such_file_or_directory__ = 'No such file or directory'
@@ -255,3 +257,12 @@ if (__name__ == '__main__'):
                 create_the_repos.append(possible_repo_name)
                 
     print(json.dumps({'create_the_repos': create_the_repos}, indent=3))
+    
+    for name in create_the_repos:
+        print('Create ECR repo "{}"'.format(name))
+        cmd = __aws_cli_ecr_create_repo__
+        cmd.append(name)
+        result = subprocess.run(cmd, stdout=subprocess.PIPE)
+        resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=True)
+        assert 'repositories' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(' '.join(cmd))
+    
