@@ -18,14 +18,13 @@ __cat_aws_config__ = ['cat', __aws_config_dest__]
 __aws_version__ = ['aws', '--version']
 __docker_images__ = ['docker', 'images', '--format', '{{.Repository}}:{{.Tag}}={{.ID}}']
 
+__docker_containers__ = ['docker', 'ps', '-a', '--format', '{{.Image}}={{.ID}}']
+
 __aws_cli_installer__ = ['./scripts/aws-cli-installer.sh']
 
 __resolve_docker_issues__ = ['./scripts/resolve-docker-issues.sh']
 
 __docker_hello_world__ = ['docker', 'run', 'hello-world']
-
-__aws_docker_login__ = ['aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin http://link-for-your-repository-goes-here']
-__aws_docker_login__ = __aws_docker_login__[0].split()
 
 __aws_cli_login__ = ['aws ecr get-login --no-include-email --region us-east-2']
 __aws_cli_login__ = __aws_cli_login__[0].split()
@@ -34,13 +33,36 @@ __aws_cli_ecr_describe_repos__ = ['aws', 'ecr', 'describe-repositories']
 
 __aws_cli_ecr_create_repo__ = ['aws', 'ecr', 'create-repository', '--repository-name']
 
+__aws_cmd_ecr_delete_repo__ = 'aws ecr delete-repository --repository-name {} --force'
+
+__docker_tag_cmd__ = 'docker tag {} {}:latest'
+
+__docker_push_cmd__ = 'docker push {}:latest'
+
+__docker_remove_container_by_id__ = 'docker container rm {}'
+
+__aws_docker_login__cmd__ = 'aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin {}'
+
+__docker_system_prune__ = ['yes | docker system prune -a']
+
 __aws_cli__ = 'aws-cli/2.'
 __hello_from_docker__ = 'Hello from Docker!'
 __no_such_file_or_directory__ = 'No such file or directory'
 
 __docker_pulls__ = './script/pulls.sh'
 
-name_to_id = {}
+__aws_docker_login__ = './scripts/aws-docker-login.sh {}'
+__expected_aws_docker_login__ = 'Login Succeeded'
+
+
+class SmartDict(dict):
+    def __setitem__(self, k, v):
+        bucket = self.get(k, [])
+        bucket.append(v)
+        return super().__setitem__(k, bucket)
+
+
+name_to_id = SmartDict()
 id_to_name = {}
 
 response_vectors = {}
@@ -50,6 +72,8 @@ current_aws_creds = {}
 response_content = []
 
 ignoring_image_names = ["hello-world"]
+
+has_been_tagged = lambda name:str(name).find('.amazonaws.com/') > -1
 
 def handle_resolve_docker_issues(item):
     print('DEBUG:  handle_resolve_docker_issues --> {}'.format(item))
@@ -84,6 +108,11 @@ def resolve_docker_issues():
     result = subprocess.run(__resolve_docker_issues__, stdout=subprocess.PIPE)
     handle_stdin(result.stdout, callback2=handle_resolve_docker_issues, verbose=True)
 
+
+
+def handle_aws_docker_login(item):
+    print('DEBUG:  handle_aws_docker_login --> {}'.format(item))
+    return True
 
 
 def handle_aws_version(item):
@@ -135,7 +164,17 @@ def parse_docker_image_ls(line):
     return line.replace("b'", "").split('=')
 
 
+def parse_docker_ps(line):
+    return line.replace("b'", "").split('=')
+
+
 def handle_docker_item(item):
+    if (all([len(t.strip()) > 1 for t in item])):
+        name_to_id[item[0]] = item[-1]
+        id_to_name[item[-1]] = item[0]
+
+
+def handle_docker_ps_item(item):
     if (all([len(t.strip()) > 1 for t in item])):
         name_to_id[item[0]] = item[-1]
         id_to_name[item[-1]] = item[0]
@@ -171,10 +210,16 @@ def handle_stdin(stdin, callback=None, verbose=False, callback2=None, is_json=Fa
                 traceback.print_exception(*exc_info)
                 del exc_info
         response_content.append(item)
-    __content = ''
+    __content = ''.join(response_content) if (not isinstance(response_content[0] if (len(response_content) > 0) else response_content, list)) else ''
+    if (len(__content) > 0):
+        regex = r"^b\'(?P<content>.*)\'$"
+        matches = re.search(regex, __content)
+        __content = matches.groupdict().get('content') if (matches) else __content
     if (is_json):
-        __content = ''.join(response_content)
         data = json_loads(__content)
+    if (verbose):
+        print('DEBUG: __content -> {}'.format(__content))
+        print('DEBUG: resp -> {}'.format(resp is not None))
     return resp if (resp is not None) else data if (is_json) else __content
 
 
@@ -202,7 +247,11 @@ if (__name__ == '__main__'):
             result = subprocess.run(__aws_version__, stdout=subprocess.PIPE)
             resp = handle_stdin(result.stdout, callback2=handle_aws_version, verbose=False)
             break
-        except:
+        except Exception as ex:
+            exc_info = sys.exc_info()
+            traceback.print_exception(*exc_info)
+            del exc_info
+            
             install_aws_cli()
         finally:
             if (not resp):
@@ -216,12 +265,29 @@ if (__name__ == '__main__'):
             result = subprocess.run(__docker_hello_world__, stdout=subprocess.PIPE)
             resp = handle_stdin(result.stdout, callback2=handle_docker_hello, verbose=False)
             break
-        except:
+        except Exception as ex:
+            exc_info = sys.exc_info()
+            traceback.print_exception(*exc_info)
+            del exc_info
+            
             resolve_docker_issues()
         finally:
             if (not resp):
                 print('Warning: Cannot resolve docker issues automatically. Please run the script manually. See the "script" directory.')
                 break
+
+    result = subprocess.run(__docker_containers__, stdout=subprocess.PIPE)
+    resp = handle_stdin(result.stdout, callback=parse_docker_ps, callback2=handle_docker_ps_item, verbose=False)
+    
+    dead_containers = name_to_id.get('hello-world', [])
+    if (len(dead_containers) > 0):
+        for _id in dead_containers:
+            result = subprocess.run(__docker_remove_container_by_id__.format(_id).split(), stdout=subprocess.PIPE)
+            resp = handle_stdin(result.stdout, callback=None, callback2=None, verbose=False)
+            print(resp)
+
+    name_to_id = SmartDict()
+    id_to_name = {}
 
     result = subprocess.run(__docker_images__, stdout=subprocess.PIPE)
     resp = handle_stdin(result.stdout, callback=parse_docker_image_ls, callback2=handle_docker_item, verbose=False)
@@ -240,29 +306,67 @@ if (__name__ == '__main__'):
     result = subprocess.run(__aws_cli_ecr_describe_repos__, stdout=subprocess.PIPE)
     resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=True)
     assert 'repositories' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(__aws_cli_ecr_describe_repos__)
-    
-    print(json.dumps(resp, indent=3))
-    
-    create_the_repos = []
     the_repositories = resp.get('repositories', [])
-    for image_id,image_name in id_to_name.items():
-        __is__ = False
-        possible_repo_name = image_name.split(':')[0]
-        if (possible_repo_name not in ignoring_image_names):
+    
+    if (1): # this is only for development.
+        if (len(the_repositories)):
             for repo in the_repositories:
-                if (possible_repo_name == repo.get('repositoryName')):
-                    __is__ = True
-                    continue
-            if (not __is__):
-                create_the_repos.append(possible_repo_name)
-                
-    print(json.dumps({'create_the_repos': create_the_repos}, indent=3))
+                repo_name = repo.get('repositoryName')
+                assert repo_name is not None, 'Cannot remove {} due to the lack of information. Please resolve.'.format(json.dumps(repo, indet=3))
+                print('Removing the repo named "{}".'.format(repo_name))
+                cmd = __aws_cmd_ecr_delete_repo__.format(repo_name)
+                result = subprocess.run(cmd.split(), stdout=subprocess.PIPE)
+                resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=True)
+                assert 'repository' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(cmd)
     
-    for name in create_the_repos:
-        print('Create ECR repo "{}"'.format(name))
-        cmd = __aws_cli_ecr_create_repo__
-        cmd.append(name)
-        result = subprocess.run(cmd, stdout=subprocess.PIPE)
-        resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=True)
-        assert 'repositories' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(' '.join(cmd))
+    if (1):
+        create_the_repos = []
+        for image_id,image_name in id_to_name.items():
+            __is__ = False
+            possible_repo_name = image_name.split(':')[0]
+            if (possible_repo_name not in ignoring_image_names):
+                for repo in the_repositories:
+                    if (possible_repo_name == repo.get('repositoryName')):
+                        __is__ = True
+                        continue
+                if (not __is__):
+                    create_the_repos.append({'name':possible_repo_name.split('/')[-1], 'id': image_id})
+                    
+        print(json.dumps({'create_the_repos': create_the_repos}, indent=3))
+        
+        for vector in create_the_repos:
+            _id = vector.get('id')
+            assert _id is not None, 'Problem with getting the image id from the vector. Please fix.'
+            name = vector.get('name')
+            assert name is not None, 'Problem with getting the image name from the vector. Please fix.'
+
+            print('Create ECR repo "{}"'.format(name))
+            cmd = __aws_cli_ecr_create_repo__
+            cmd.append(name)
+            result = subprocess.run(cmd, stdout=subprocess.PIPE)
+            resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=True)
+            assert 'repository' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(' '.join(cmd))
+
+            repo_uri = resp.get('repository', {}).get('repositoryUri')
+            assert repo_uri is not None, 'Cannot tag "{}".  Please resolve.'.format(name)
+
+            cmd = __docker_tag_cmd__.format(_id, repo_uri)
+            result = subprocess.run(cmd.split(), stdout=subprocess.PIPE)
+            resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=False)
+
+            cmd = __aws_docker_login__.format(repo_uri.split('/')[0])
+            result = subprocess.run(cmd.split(), stdout=subprocess.PIPE)
+            resp = handle_stdin(result.stdout, callback2=None, verbose=True, is_json=False)
+            assert resp == __expected_aws_docker_login__, 'Cannot login for docker "{}".  Please resolve.'.format(cmd)
+            
+            cmd = __docker_push_cmd__.format(repo_uri)
+            result = subprocess.run(cmd.split(), stdout=subprocess.PIPE)
+            resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=False)
+            assert repo_uri is not None, 'Cannot tag "{}".  Please resolve.'.format(name)
     
+    if (0):
+        print('{}'.format(__docker_system_prune__))
+        result = subprocess.run(__docker_system_prune__, stdout=subprocess.PIPE)
+        resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=False)
+    
+        
