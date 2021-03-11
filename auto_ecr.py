@@ -71,7 +71,7 @@ current_aws_creds = {}
 
 response_content = []
 
-ignoring_image_names = ["hello-world"]
+ignoring_image_names = [__docker_hello_world__[-1]]
 
 has_been_tagged = lambda name:str(name).find('.amazonaws.com/') > -1
 
@@ -279,11 +279,12 @@ if (__name__ == '__main__'):
     result = subprocess.run(__docker_containers__, stdout=subprocess.PIPE)
     resp = handle_stdin(result.stdout, callback=parse_docker_ps, callback2=handle_docker_ps_item, verbose=False)
     
-    dead_containers = name_to_id.get('hello-world', [])
+    dead_containers = name_to_id.get(__docker_hello_world__[-1], [])
     if (len(dead_containers) > 0):
         for _id in dead_containers:
             result = subprocess.run(__docker_remove_container_by_id__.format(_id).split(), stdout=subprocess.PIPE)
             resp = handle_stdin(result.stdout, callback=None, callback2=None, verbose=False)
+            assert resp == _id, 'Something went wrong when trying to remove container #{}.'.format(_id)
             print(resp)
 
     name_to_id = SmartDict()
