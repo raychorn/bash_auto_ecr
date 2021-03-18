@@ -107,7 +107,8 @@ if (not is_running_production()):
     log_root = os.path.dirname(os.path.dirname(log_filename))
     for p in [production_token, development_token]:
         fp = os.sep.join([log_root, p])
-        shutil.rmtree(fp)
+        if (os.path.exists(fp)):
+            shutil.rmtree(fp)
         
 class SmartDict(dict):
     def __setitem__(self, k, v):
