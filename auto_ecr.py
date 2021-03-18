@@ -216,7 +216,7 @@ def handle_stdin(stdin, callback=None, verbose=False, callback2=None, is_json=Fa
         matches = re.search(regex, __content)
         __content = matches.groupdict().get('content') if (matches) else __content
     if (is_json):
-        data = json_loads(__content)
+        data = json_loads(__content) if (len(__content) > 0) else {}
     if (verbose):
         print('DEBUG: __content -> {}'.format(__content))
         print('DEBUG: resp -> {}'.format(resp is not None))
@@ -346,7 +346,10 @@ if (__name__ == '__main__'):
             cmd.append(name)
             result = subprocess.run(cmd, stdout=subprocess.PIPE)
             resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=True)
-            assert 'repository' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(' '.join(cmd))
+            if (len(resp) > 0):
+                assert 'repository' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(' '.join(cmd))
+            else:
+                print('{} already exists.'.format(name))
 
             repo_uri = resp.get('repository', {}).get('repositoryUri')
             assert repo_uri is not None, 'Cannot tag "{}".  Please resolve.'.format(name)
@@ -361,9 +364,12 @@ if (__name__ == '__main__'):
             assert resp == __expected_aws_docker_login__, 'Cannot login for docker "{}".  Please resolve.'.format(cmd)
             
             cmd = __docker_push_cmd__.format(repo_uri)
+            print('BEGIN: {}'.format(cmd))
             result = subprocess.run(cmd.split(), stdout=subprocess.PIPE)
             resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=False)
             assert repo_uri is not None, 'Cannot tag "{}".  Please resolve.'.format(name)
+            print('END: {}'.format(cmd))
+            print('\n')
     
     if (0):
         print('{}'.format(__docker_system_prune__))
