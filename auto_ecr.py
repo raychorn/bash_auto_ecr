@@ -433,7 +433,8 @@ if (__name__ == '__main__'):
             vector['result'] = True if (issues_count == 0) else False
             return vector
             
-        executor = futures.ProcessPoolExecutor(max_workers=10)
+        __max_workers = len(create_the_repos)+1
+        executor = futures.ProcessPoolExecutor(max_workers=__max_workers)
 
         wait_for = []
         for vector in create_the_repos:
