@@ -37,7 +37,7 @@ __aws_cli_login__ = __aws_cli_login__[0].split()
 
 __aws_cli_ecr_describe_repos__ = ['aws', 'ecr', 'describe-repositories']
 
-__aws_cli_ecr_create_repo__ = ['aws', 'ecr', 'create-repository', '--repository-name']
+__aws_cli_ecr_create_repo__ = ['aws', 'ecr', 'create-repository', '--repository-name', '--image-scanning-configuration', 'scanOnPush=true']
 
 __aws_cmd_ecr_delete_repo__ = 'aws ecr delete-repository --repository-name {} --force'
 
@@ -438,39 +438,6 @@ if (__name__ == '__main__'):
         wait_for = []
         for vector in create_the_repos:
             wait_for.append(ex.submit(task, vector))
-            if (0):
-                _id = vector.get('id')
-                assert _id is not None, 'Problem with getting the image id from the vector. Please fix.'
-                name = vector.get('name')
-                assert name is not None, 'Problem with getting the image name from the vector. Please fix.'
-
-                logger.info('Create ECR repo "{}"'.format(name))
-                cmd = [c for c in __aws_cli_ecr_create_repo__]
-                cmd.append(name)
-                result = subprocess.run(cmd, stdout=subprocess.PIPE)
-                resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=True)
-                assert 'repository' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(' '.join(cmd))
-
-                repo_uri = resp.get('repository', {}).get('repositoryUri')
-                assert repo_uri is not None, 'Cannot tag "{}".  Please resolve.'.format(name)
-
-                cmd = __docker_tag_cmd__.format(_id, repo_uri)
-                result = subprocess.run(cmd.split(), stdout=subprocess.PIPE)
-                resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=False)
-
-                cmd = __aws_docker_login__.format(repo_uri.split('/')[0])
-                result = subprocess.run(cmd.split(), stdout=subprocess.PIPE)
-                resp = handle_stdin(result.stdout, callback2=None, verbose=True, is_json=False)
-                assert resp == __expected_aws_docker_login__, 'Cannot login for docker "{}".  Please resolve.'.format(cmd)
-                
-                cmd = __docker_push_cmd__.format(repo_uri)
-                logger.info('BEGIN: {}'.format(cmd))
-                logger.info('\t\tPlease be patient this will take some time.')
-                result = subprocess.run(cmd.split(), stdout=subprocess.PIPE)
-                resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=False)
-                assert repo_uri is not None, 'Cannot tag "{}".  Please resolve.'.format(name)
-                logger.info('END: {}'.format(cmd))
-                logger.info('\n')
                 
         logger.info('BEGIN: Waiting for tasks to complete.')
         for f in futures.as_completed(wait_for):
