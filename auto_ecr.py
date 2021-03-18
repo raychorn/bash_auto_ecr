@@ -342,14 +342,11 @@ if (__name__ == '__main__'):
             assert name is not None, 'Problem with getting the image name from the vector. Please fix.'
 
             print('Create ECR repo "{}"'.format(name))
-            cmd = __aws_cli_ecr_create_repo__
+            cmd = [c for c in __aws_cli_ecr_create_repo__]
             cmd.append(name)
             result = subprocess.run(cmd, stdout=subprocess.PIPE)
             resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=True)
-            if (len(resp) > 0):
-                assert 'repository' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(' '.join(cmd))
-            else:
-                print('{} already exists.'.format(name))
+            assert 'repository' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(' '.join(cmd))
 
             repo_uri = resp.get('repository', {}).get('repositoryUri')
             assert repo_uri is not None, 'Cannot tag "{}".  Please resolve.'.format(name)
@@ -365,6 +362,7 @@ if (__name__ == '__main__'):
             
             cmd = __docker_push_cmd__.format(repo_uri)
             print('BEGIN: {}'.format(cmd))
+            print('\t\tPlease be patient this will take some time.')
             result = subprocess.run(cmd.split(), stdout=subprocess.PIPE)
             resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=False)
             assert repo_uri is not None, 'Cannot tag "{}".  Please resolve.'.format(name)
