@@ -1,8 +1,12 @@
 import os, sys
 import re
+import socket
 import shutil
+import logging
 import subprocess
 import traceback
+from datetime import datetime
+from logging.handlers import RotatingFileHandler
 
 import mujson as json
 
@@ -54,7 +58,57 @@ __docker_pulls__ = './script/pulls.sh'
 __aws_docker_login__ = './scripts/aws-docker-login.sh {}'
 __expected_aws_docker_login__ = 'Login Succeeded'
 
+production_token = 'production'
+development_token = 'development'
 
+is_really_something = lambda s,t:s and t(s)
+something_greater_than_zero = lambda s:(s > 0)
+default_timestamp = lambda t:t.isoformat().replace(':', '').replace('-','').split('.')[0]
+is_running_production = lambda : (socket.gethostname() != 'DESKTOP-8H4F8R5')
+
+def get_stream_handler(streamformat="%(asctime)s:%(levelname)s:%(message)s"):
+    stream = logging.StreamHandler()
+    stream.setLevel(logging.INFO if (not is_running_production()) else logging.DEBUG)
+    stream.setFormatter(logging.Formatter(streamformat))
+    return stream
+
+    
+def setup_rotating_file_handler(logname, logfile, max_bytes, backup_count):
+    assert is_really_something(backup_count, something_greater_than_zero), 'Missing backup_count?'
+    assert is_really_something(max_bytes, something_greater_than_zero), 'Missing max_bytes?'
+    ch = RotatingFileHandler(logfile, 'a', max_bytes, backup_count)
+    l = logging.getLogger(logname)
+    l.addHandler(ch)
+    return l
+
+base_filename = os.path.splitext(os.path.basename(__file__))[0]
+
+log_filename = '{}{}{}{}{}{}{}_{}.log'.format('logs', os.sep, base_filename, os.sep, production_token if (is_running_production()) else development_token, os.sep, base_filename, default_timestamp(datetime.utcnow()))
+log_filename = os.sep.join([os.path.dirname(__file__), log_filename])
+
+if not os.path.exists(os.path.dirname(log_filename)):
+    os.makedirs(os.path.dirname(log_filename))
+
+if (os.path.exists(log_filename)):
+    os.remove(log_filename)
+
+log_format = ('[%(asctime)s] %(levelname)-8s %(name)-12s %(message)s')
+logging.basicConfig(
+    level=logging.DEBUG if (not is_running_production()) else logging.INFO,
+    format=log_format,
+    filename=(log_filename),
+)
+
+logger = setup_rotating_file_handler(base_filename, log_filename, (1024*1024*1024), 10)
+logger.addHandler(get_stream_handler())
+
+if (not is_running_production()):
+    import shutil
+    log_root = os.path.dirname(os.path.dirname(log_filename))
+    for p in [production_token, development_token]:
+        fp = os.sep.join([log_root, p])
+        shutil.rmtree(fp)
+        
 class SmartDict(dict):
     def __setitem__(self, k, v):
         bucket = self.get(k, [])
@@ -76,7 +130,7 @@ ignoring_image_names = [__docker_hello_world__[-1]]
 has_been_tagged = lambda name:str(name).find('.amazonaws.com/') > -1
 
 def handle_resolve_docker_issues(item):
-    print('DEBUG:  handle_resolve_docker_issues --> {}'.format(item))
+    logger.info('DEBUG:  handle_resolve_docker_issues --> {}'.format(item))
     return True
 
 
@@ -86,32 +140,32 @@ def handle_docker_hello(item):
         if (__is__ == -1):
             return False
         assert (__is__ > -1), 'Missing {}'.format(__hello_from_docker__)
-        print('{}'.format(item))
+        logger.info('{}'.format(item))
     except:
         return False
     return True
 
 
 def handle_aws_cli_installer(item):
-    print('DEBUG:  handle_aws_cli_installer --> {}'.format(item))
+    logger.info('DEBUG:  handle_aws_cli_installer --> {}'.format(item))
     return True
 
 
 def install_aws_cli():
-    print('Installing aws cli.')
+    logger.info('Installing aws cli.')
     result = subprocess.run(__aws_cli_installer__, stdout=subprocess.PIPE)
     handle_stdin(result.stdout, callback2=handle_aws_cli_installer, verbose=True)
 
 
 def resolve_docker_issues():
-    print('Resolving docker issues.')
+    logger.info('Resolving docker issues.')
     result = subprocess.run(__resolve_docker_issues__, stdout=subprocess.PIPE)
     handle_stdin(result.stdout, callback2=handle_resolve_docker_issues, verbose=True)
 
 
 
 def handle_aws_docker_login(item):
-    print('DEBUG:  handle_aws_docker_login --> {}'.format(item))
+    logger.info('DEBUG:  handle_aws_docker_login --> {}'.format(item))
     return True
 
 
@@ -123,7 +177,7 @@ def handle_aws_version(item):
             if (__is__ == -1):
                 return False
             assert (__is__ > -1), 'Missing {}'.format(__aws_cli__)
-            print('{}'.format(item))
+            logger.info('{}'.format(item))
             response_vectors[__aws_cli__] = __is__
         except:
             return False
@@ -218,29 +272,29 @@ def handle_stdin(stdin, callback=None, verbose=False, callback2=None, is_json=Fa
     if (is_json):
         data = json_loads(__content) if (len(__content) > 0) else {}
     if (verbose):
-        print('DEBUG: __content -> {}'.format(__content))
-        print('DEBUG: resp -> {}'.format(resp is not None))
+        logger.info('DEBUG: __content -> {}'.format(__content))
+        logger.info('DEBUG: resp -> {}'.format(resp is not None))
     return resp if (resp is not None) else data if (is_json) else __content
 
 
 if (__name__ == '__main__'):
-    print('Checking for aws creds.')
+    logger.info('Checking for aws creds.')
     result = subprocess.run(__cat_aws_creds__, stdout=subprocess.PIPE)
     resp = handle_stdin(result.stdout, callback2=handle_cat_aws_creds, verbose=False)
     assert resp == True, 'Cannot verify the aws creds.  Please resolve.'
 
-    print('Checking for aws config.')
+    logger.info('Checking for aws config.')
     result = subprocess.run(__cat_aws_config__, stdout=subprocess.PIPE)
     resp = handle_stdin(result.stdout, callback2=handle_cat_aws_config, verbose=False)
     assert resp == True, 'Cannot verify the aws config.  Please resolve.'
 
     if (0):
-        print('Using the aws creds.')
+        logger.info('Using the aws creds.')
         result = subprocess.run(__aws_cli_login__, stdout=subprocess.PIPE)
         resp = handle_stdin(result.stdout, callback2=handle_aws_login, verbose=False)
         assert resp == True, 'Cannot login using the aws creds.  Please resolve.'
 
-    print('Checking for aws cli version 2.')
+    logger.info('Checking for aws cli version 2.')
     resp = None
     while (1):
         try:
@@ -255,13 +309,13 @@ if (__name__ == '__main__'):
             install_aws_cli()
         finally:
             if (not resp):
-                print('Warning: Cannot resolve aws cli issues automatically. Please run the script manually. See the "script" directory.')
+                logger.info('Warning: Cannot resolve aws cli issues automatically. Please run the script manually. See the "script" directory.')
                 break
 
-    print('Checking for docker.')
     resp = None
     while (1):
         try:
+            logger.info('Checking for docker.')
             result = subprocess.run(__docker_hello_world__, stdout=subprocess.PIPE)
             resp = handle_stdin(result.stdout, callback2=handle_docker_hello, verbose=False)
             break
@@ -273,7 +327,7 @@ if (__name__ == '__main__'):
             resolve_docker_issues()
         finally:
             if (not resp):
-                print('Warning: Cannot resolve docker issues automatically. Please run the script manually. See the "script" directory.')
+                logger.info('Warning: Cannot resolve docker issues automatically. Please run the script manually. See the "script" directory.')
                 break
 
     result = subprocess.run(__docker_containers__, stdout=subprocess.PIPE)
@@ -285,7 +339,7 @@ if (__name__ == '__main__'):
             result = subprocess.run(__docker_remove_container_by_id__.format(_id).split(), stdout=subprocess.PIPE)
             resp = handle_stdin(result.stdout, callback=None, callback2=None, verbose=False)
             assert resp == _id, 'Something went wrong when trying to remove container #{}.'.format(_id)
-            print(resp)
+            logger.info(resp)
 
     name_to_id = SmartDict()
     id_to_name = {}
@@ -293,17 +347,17 @@ if (__name__ == '__main__'):
     result = subprocess.run(__docker_images__, stdout=subprocess.PIPE)
     resp = handle_stdin(result.stdout, callback=parse_docker_image_ls, callback2=handle_docker_item, verbose=False)
     if (0):
-        print(len(id_to_name))
+        logger.info(len(id_to_name))
         with open(__docker_pulls__, 'w') as fOut:
-            print('#!/usr/bin/env bash\n', file=fOut)
+            logger.info('#!/usr/bin/env bash\n', file=fOut)
             for k,v in id_to_name.items():
-                print('{} -> {}'.format(k,v))
-                print('docker pull {}'.format(v), file=fOut)
+                logger.info('{} -> {}'.format(k,v))
+                logger.info('docker pull {}'.format(v), file=fOut)
                 
     assert len(id_to_name) > 0, 'There are no docker images to handle.  Please resolve.'
-    print('There are {} docker images.'.format(len(id_to_name)))
+    logger.info('There are {} docker images.'.format(len(id_to_name)))
     
-    print('{}'.format(__aws_cli_ecr_describe_repos__))
+    logger.info('{}'.format(__aws_cli_ecr_describe_repos__))
     result = subprocess.run(__aws_cli_ecr_describe_repos__, stdout=subprocess.PIPE)
     resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=True)
     assert 'repositories' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(__aws_cli_ecr_describe_repos__)
@@ -314,7 +368,7 @@ if (__name__ == '__main__'):
             for repo in the_repositories:
                 repo_name = repo.get('repositoryName')
                 assert repo_name is not None, 'Cannot remove {} due to the lack of information. Please resolve.'.format(json.dumps(repo, indet=3))
-                print('Removing the repo named "{}".'.format(repo_name))
+                logger.info('Removing the repo named "{}".'.format(repo_name))
                 cmd = __aws_cmd_ecr_delete_repo__.format(repo_name)
                 result = subprocess.run(cmd.split(), stdout=subprocess.PIPE)
                 resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=True)
@@ -341,7 +395,7 @@ if (__name__ == '__main__'):
             name = vector.get('name')
             assert name is not None, 'Problem with getting the image name from the vector. Please fix.'
 
-            print('Create ECR repo "{}"'.format(name))
+            logger.info('Create ECR repo "{}"'.format(name))
             cmd = [c for c in __aws_cli_ecr_create_repo__]
             cmd.append(name)
             result = subprocess.run(cmd, stdout=subprocess.PIPE)
@@ -361,16 +415,16 @@ if (__name__ == '__main__'):
             assert resp == __expected_aws_docker_login__, 'Cannot login for docker "{}".  Please resolve.'.format(cmd)
             
             cmd = __docker_push_cmd__.format(repo_uri)
-            print('BEGIN: {}'.format(cmd))
-            print('\t\tPlease be patient this will take some time.')
+            logger.info('BEGIN: {}'.format(cmd))
+            logger.info('\t\tPlease be patient this will take some time.')
             result = subprocess.run(cmd.split(), stdout=subprocess.PIPE)
             resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=False)
             assert repo_uri is not None, 'Cannot tag "{}".  Please resolve.'.format(name)
-            print('END: {}'.format(cmd))
-            print('\n')
+            logger.info('END: {}'.format(cmd))
+            logger.info('\n')
     
     if (0):
-        print('{}'.format(__docker_system_prune__))
+        logger.info('{}'.format(__docker_system_prune__))
         result = subprocess.run(__docker_system_prune__, stdout=subprocess.PIPE)
         resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=False)
     
