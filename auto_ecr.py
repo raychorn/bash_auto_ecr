@@ -279,8 +279,16 @@ def handle_stdin(stdin, callback=None, verbose=False, callback2=None, is_json=Fa
         logger.info('DEBUG: resp -> {}'.format(resp is not None))
     return resp if (resp is not None) else data if (is_json) else __content
 
+__clean_ecr_command_line_option__ = '--clean-ecr'
 
 if (__name__ == '__main__'):
+    '''
+    --clean-ecr ... removes all known repos from the ECR - this is for development purposes only.
+    '''
+    is_cleaning_ecr = any([str(arg).find(__clean_ecr_command_line_option__) > -1 for arg in sys.argv])
+    if (is_cleaning_ecr):
+        logger.info('{}'.format(__clean_ecr_command_line_option__))
+    
     logger.info('Checking for aws creds.')
     result = subprocess.run(__cat_aws_creds__, stdout=subprocess.PIPE)
     resp = handle_stdin(result.stdout, callback2=handle_cat_aws_creds, verbose=False)
@@ -366,7 +374,7 @@ if (__name__ == '__main__'):
     assert 'repositories' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(__aws_cli_ecr_describe_repos__)
     the_repositories = resp.get('repositories', [])
     
-    if (1): # this is only for development.
+    if (is_cleaning_ecr): # this is only for development.
         if (len(the_repositories)):
             for repo in the_repositories:
                 repo_name = repo.get('repositoryName')
@@ -377,7 +385,7 @@ if (__name__ == '__main__'):
                 resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=True)
                 assert 'repository' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(cmd)
     
-    if (1):
+    if (not is_cleaning_ecr):
         create_the_repos = []
         for image_id,image_name in id_to_name.items():
             __is__ = False
