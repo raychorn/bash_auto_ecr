@@ -385,6 +385,9 @@ if (__name__ == '__main__'):
                 result = subprocess.run(cmd.split(), stdout=subprocess.PIPE)
                 resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=True)
                 assert 'repository' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(cmd)
+            logger.info('Done.')
+        else:
+            logger.info('Nothing to do.')
     
     if (not is_cleaning_ecr):
         create_the_repos = []
