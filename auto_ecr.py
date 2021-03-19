@@ -37,7 +37,7 @@ __aws_cli_login__ = __aws_cli_login__[0].split()
 
 __aws_cli_ecr_describe_repos__ = ['aws', 'ecr', 'describe-repositories']
 
-__aws_cli_ecr_create_repo__ = ['aws', 'ecr', 'create-repository', '--repository-name', '--image-scanning-configuration', 'scanOnPush=true']
+__aws_cli_ecr_create_repo__ = ['aws', 'ecr', 'create-repository', '--repository-name', '{}', '--image-scanning-configuration', 'scanOnPush=true']
 
 __aws_cmd_ecr_delete_repo__ = 'aws ecr delete-repository --repository-name {} --force'
 
@@ -418,8 +418,7 @@ if (__name__ == '__main__'):
                 assert name is not None, 'Problem with getting the image name from the vector. Please fix.'
 
                 logger.info('Create ECR repo "{}"'.format(name))
-                cmd = [c for c in __aws_cli_ecr_create_repo__]
-                cmd.append(name)
+                cmd = [str(c).replace('{}', name) for c in __aws_cli_ecr_create_repo__]
                 result = subprocess.run(cmd, stdout=subprocess.PIPE)
                 resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=True)
                 assert 'repository' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(' '.join(cmd))
