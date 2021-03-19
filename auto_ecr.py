@@ -280,6 +280,7 @@ def handle_stdin(stdin, callback=None, verbose=False, callback2=None, is_json=Fa
     return resp if (resp is not None) else data if (is_json) else __content
 
 __clean_ecr_command_line_option__ = '--clean-ecr'
+__push_ecr_command_line_option__ = '--push-ecr'
 
 if (__name__ == '__main__'):
     '''
@@ -288,6 +289,10 @@ if (__name__ == '__main__'):
     is_cleaning_ecr = any([str(arg).find(__clean_ecr_command_line_option__) > -1 for arg in sys.argv])
     if (is_cleaning_ecr):
         logger.info('{}'.format(__clean_ecr_command_line_option__))
+    
+    is_pushing_ecr = any([str(arg).find(__push_ecr_command_line_option__) > -1 for arg in sys.argv])
+    if (is_pushing_ecr):
+        logger.info('{}'.format(__push_ecr_command_line_option__))
     
     logger.info('Checking for aws creds.')
     result = subprocess.run(__cat_aws_creds__, stdout=subprocess.PIPE)
