@@ -455,7 +455,7 @@ if (__name__ == '__main__'):
 
         wait_for = []
         for vector in create_the_repos:
-            wait_for.append(ex.submit(task, vector))
+            wait_for.append(executor.submit(task, vector))
                 
         logger.info('BEGIN: Waiting for tasks to complete.')
         for f in futures.as_completed(wait_for):
