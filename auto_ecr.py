@@ -323,50 +323,51 @@ if (__name__ == '__main__'):
                 logger.info('Warning: Cannot resolve aws cli issues automatically. Please run the script manually. See the "script" directory.')
                 break
 
-    resp = None
-    while (1):
-        try:
-            logger.info('Checking for docker.')
-            result = subprocess.run(__docker_hello_world__, stdout=subprocess.PIPE)
-            resp = handle_stdin(result.stdout, callback2=handle_docker_hello, verbose=False)
-            break
-        except Exception as ex:
-            exc_info = sys.exc_info()
-            traceback.print_exception(*exc_info)
-            del exc_info
-            
-            resolve_docker_issues()
-        finally:
-            if (not resp):
-                logger.info('Warning: Cannot resolve docker issues automatically. Please run the script manually. See the "script" directory.')
+    if (not is_cleaning_ecr):
+        resp = None
+        while (1):
+            try:
+                logger.info('Checking for docker.')
+                result = subprocess.run(__docker_hello_world__, stdout=subprocess.PIPE)
+                resp = handle_stdin(result.stdout, callback2=handle_docker_hello, verbose=False)
                 break
-
-    result = subprocess.run(__docker_containers__, stdout=subprocess.PIPE)
-    resp = handle_stdin(result.stdout, callback=parse_docker_ps, callback2=handle_docker_ps_item, verbose=False)
-    
-    dead_containers = name_to_id.get(__docker_hello_world__[-1], [])
-    if (len(dead_containers) > 0):
-        for _id in dead_containers:
-            result = subprocess.run(__docker_remove_container_by_id__.format(_id).split(), stdout=subprocess.PIPE)
-            resp = handle_stdin(result.stdout, callback=None, callback2=None, verbose=False)
-            assert resp == _id, 'Something went wrong when trying to remove container #{}.'.format(_id)
-            logger.info(resp)
-
-    name_to_id = SmartDict()
-    id_to_name = {}
-
-    result = subprocess.run(__docker_images__, stdout=subprocess.PIPE)
-    resp = handle_stdin(result.stdout, callback=parse_docker_image_ls, callback2=handle_docker_item, verbose=False)
-    if (0):
-        logger.info(len(id_to_name))
-        with open(__docker_pulls__, 'w') as fOut:
-            logger.info('#!/usr/bin/env bash\n', file=fOut)
-            for k,v in id_to_name.items():
-                logger.info('{} -> {}'.format(k,v))
-                logger.info('docker pull {}'.format(v), file=fOut)
+            except Exception as ex:
+                exc_info = sys.exc_info()
+                traceback.print_exception(*exc_info)
+                del exc_info
                 
-    assert len(id_to_name) > 0, 'There are no docker images to handle.  Please resolve.'
-    logger.info('There are {} docker images.'.format(len(id_to_name)))
+                resolve_docker_issues()
+            finally:
+                if (not resp):
+                    logger.info('Warning: Cannot resolve docker issues automatically. Please run the script manually. See the "script" directory.')
+                    break
+
+        result = subprocess.run(__docker_containers__, stdout=subprocess.PIPE)
+        resp = handle_stdin(result.stdout, callback=parse_docker_ps, callback2=handle_docker_ps_item, verbose=False)
+        
+        dead_containers = name_to_id.get(__docker_hello_world__[-1], [])
+        if (len(dead_containers) > 0):
+            for _id in dead_containers:
+                result = subprocess.run(__docker_remove_container_by_id__.format(_id).split(), stdout=subprocess.PIPE)
+                resp = handle_stdin(result.stdout, callback=None, callback2=None, verbose=False)
+                assert resp == _id, 'Something went wrong when trying to remove container #{}.'.format(_id)
+                logger.info(resp)
+
+        name_to_id = SmartDict()
+        id_to_name = {}
+
+        result = subprocess.run(__docker_images__, stdout=subprocess.PIPE)
+        resp = handle_stdin(result.stdout, callback=parse_docker_image_ls, callback2=handle_docker_item, verbose=False)
+        if (0):
+            logger.info(len(id_to_name))
+            with open(__docker_pulls__, 'w') as fOut:
+                logger.info('#!/usr/bin/env bash\n', file=fOut)
+                for k,v in id_to_name.items():
+                    logger.info('{} -> {}'.format(k,v))
+                    logger.info('docker pull {}'.format(v), file=fOut)
+                    
+        assert len(id_to_name) > 0, 'There are no docker images to handle.  Please resolve.'
+        logger.info('There are {} docker images.'.format(len(id_to_name)))
     
     logger.info('{}'.format(__aws_cli_ecr_describe_repos__))
     result = subprocess.run(__aws_cli_ecr_describe_repos__, stdout=subprocess.PIPE)

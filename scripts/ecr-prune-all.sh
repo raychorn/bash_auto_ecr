@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-venv=$(ls ../.venv*/bin/activate)
+venv=$(ls ./.venv*/bin/activate)
 . $venv
 
-python ../auto_ecr.py --clean-ecr
+python ./auto_ecr.py --clean-ecr
