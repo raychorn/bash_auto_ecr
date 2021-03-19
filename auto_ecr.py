@@ -453,12 +453,17 @@ if (__name__ == '__main__'):
         executor = futures.ProcessPoolExecutor(max_workers=__max_workers)
 
         wait_for = []
+        count_started = 0
         for vector in create_the_repos:
             wait_for.append(executor.submit(task, vector))
+            count_started += 1
                 
+        count_completed = 0
         logger.info('BEGIN: Waiting for tasks to complete.')
         for f in futures.as_completed(wait_for):
+            count_completed += 1
             logger.info('main-thread: result: {}'.format(f.result()))
+            logger.info('main-thread: Progress: {} of {} or {:.2%} completed'.format(count_completed, count_started, (count_completed / count_started)))
         logger.info('DONE!!! Waiting for tasks to complete.')
     
     if (0):
