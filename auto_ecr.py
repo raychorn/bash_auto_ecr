@@ -12,10 +12,10 @@ from concurrent import futures
 
 import mujson as json
 
-__aws_creds_dest__ = '~/.aws/credentials'
+__aws_creds_dest__ = os.path.expanduser('~/.aws/credentials')
 __aws_creds_src__ = './.aws/credentials'
 
-__aws_config_dest__ = '~/.aws/config'
+__aws_config_dest__ = os.path.expanduser('~/.aws/config')
 __aws_config_src__ = './.aws/config'
 
 __cat_aws_creds__ = ['cat', __aws_creds_dest__]
