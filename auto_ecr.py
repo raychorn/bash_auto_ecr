@@ -68,7 +68,7 @@ something_greater_than_zero = lambda s:(s > 0)
 default_timestamp = lambda t:t.isoformat().replace(':', '').replace('-','').split('.')[0]
 is_running_production = lambda : (socket.gethostname() != 'DESKTOP-8H4F8R5')
 
-def get_stream_handler(streamformat="%(asctime)s:%(levelname)s:%(message)s"):
+def get_stream_handler(streamformat="%(asctime)s:%(levelname)s -> %(message)s"):
     stream = logging.StreamHandler()
     stream.setLevel(logging.INFO if (not is_running_production()) else logging.DEBUG)
     stream.setFormatter(logging.Formatter(streamformat))
@@ -94,7 +94,7 @@ if not os.path.exists(os.path.dirname(log_filename)):
 if (os.path.exists(log_filename)):
     os.remove(log_filename)
 
-log_format = ('[%(asctime)s] %(levelname)-8s %(name)-12s %(message)s')
+log_format = ('[%(asctime)s] %(levelname)-8s %(name)-12s -> %(message)s')
 logging.basicConfig(
     level=logging.DEBUG if (not is_running_production()) else logging.INFO,
     format=log_format,
