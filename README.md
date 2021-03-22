@@ -31,7 +31,7 @@ Either do a "newgrp docker" or log out/in to activate the changes to groups.
 
 ### Installing
 
-A step by step series of examples that tell you how to get a development env running.
+1. Edit the ./.aws/credentials file.
 
 Say what the step will be
 
@@ -47,7 +47,29 @@ aws_access_key_id = ...
 aws_secret_access_key = ...
 ```
 
-You will find my credentials there nicely encrypted and you can have then if you can guess my passphrase or break the encryption. Good luck with that.
+2. Install the aws cli by issuing the following command:
+
+```
+./scripts/aws-cli-installer.sh
+```
+
+3. Configure aws by issuing the following command:
+
+```
+aws configure
+```
+
+4. Install the pre-requisites by issuing the following command:
+
+```
+sudo ./ecr-push-all.sh
+```
+
+5. Push your Images into ECR by issuing the following command:
+
+```
+./ecr-push-all.sh
+```
 
 ## Usage <a name = "usage"></a>
 

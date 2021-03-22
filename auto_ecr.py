@@ -424,7 +424,7 @@ if (__name__ == '__main__'):
                 cmd = [str(c).replace('{}', name) for c in __aws_cli_ecr_create_repo__]
                 result = subprocess.run(cmd, stdout=subprocess.PIPE)
                 resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=True)
-                assert 'repository' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(' '.join(cmd))
+                #assert 'repository' in resp.keys(), 'Cannot "{}".  Please resolve.'.format(' '.join(cmd))
 
                 repo_uri = resp.get('repository', {}).get('repositoryUri')
                 assert repo_uri is not None, 'Cannot tag "{}".  Please resolve.'.format(name)
