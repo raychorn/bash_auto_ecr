@@ -9,16 +9,16 @@ echo "cpu_arch=$cpu_arch"
 
 if [[ "$cpu_arch" != "x86_64" ]]
 then
-	echo "This script requires x86_64 cpu architecture but this cpu is $cpu_arch."
-	exit
+	echo "This script supports both x86_64 and ARM64 cpu architectures."
+	#exit
 fi
 
 py1=$(which python$version)
-echo "py1=$py1"
+echo "python$version is $py1"
 
 myid=$(id -u)
-echo "myid=$myid"
-echo "EUID=$EUID"
+echo "Your userid is $myid"
+echo "Your userid is $EUID"
 
 if [[ "$py1." == "." ]]
 then
@@ -43,7 +43,7 @@ if (( $EUID == 0 )); then
 fi
 
 py1=$(which python$version)
-echo "py1=$py1"
+echo "python$version is $py1"
 
 if [ -z "$py1" ]
 then
@@ -52,23 +52,26 @@ then
 else
     echo "Python v$version has been installed."
     py39=$(which python$version)
-    echo "py39 -> $py39"
+    echo "python$version is $py39"
     pypip3=$(which pip3)
-    echo "pypip3 -> $pypip3"
+    echo "Your pip3 is $pypip3"
 	if [ -z "$pypip3" ]
 	then
+		echo "Installing pip3 locally."
 		$py39 ./get-pip.py
 		export PATH=/home/ubuntu/.local/bin:$PATH
+		pypip3=$(which pip3)
+		echo "Your pip3 is $pypip3"
 	fi
     $pypip3 --version
     pipv=$($pypip3 list | grep virtualenv)
-    echo "pipv -> $pipv"
+    echo "Your pip virtualenv status is $pipv"
 	if [ -z "$pipv" ]
 	then
 		$pypip3 install virtualenv
 	fi
     v=$($py39 -c 'import sys; i=sys.version_info; print("{}{}{}".format(i.major,i.minor,i.micro))')
-    echo "Use this -> $py39 --> $v"
+    echo "Your $py39 specific version is $v"
     VENV=$VENV$v
     echo "VENV -> $VENV"
     if [[ -d $VENV ]]
