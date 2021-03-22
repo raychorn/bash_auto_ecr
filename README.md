@@ -36,16 +36,18 @@ A step by step series of examples that tell you how to get a development env run
 Say what the step will be
 
 ```
-Give the example
+Put your AWS Credentials into the ./.aws/credentials file.
 ```
 
-And repeat
+As shown below:
 
 ```
-until finished
+[default]
+aws_access_key_id = ...
+aws_secret_access_key = ...
 ```
 
-End with an example of getting some data out of the system or using it for a little demo.
+You will find my credentials there nicely encrypted and you can have then if you can guess my passphrase or break the encryption. Good luck with that.
 
 ## Usage <a name = "usage"></a>
 
