@@ -5,6 +5,7 @@ import shutil
 import logging
 import subprocess
 import traceback
+from pathlib import Path
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
@@ -187,8 +188,6 @@ def handle_aws_version(item):
     return True
 
 def resolve_missing_file_dest(src_name, dest_name):
-    from pathlib import Path
-
     if (dest_name.find('~') > -1):
         dest_name = os.path.expanduser(dest_name)
     if (src_name.find('~') > -1):

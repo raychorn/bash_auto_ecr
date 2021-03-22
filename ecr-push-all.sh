@@ -4,43 +4,69 @@ version=3.9
 VENV=.venv
 REQS=./requirements.txt
 
-py1=$(whereis python | grep $version)
+cpu_arch=$(uname -m)
+echo "cpu_arch=$cpu_arch"
+
+if [[ "$cpu_arch" != "x86_64" ]]
+then
+	echo "This script requires x86_64 cpu architecture but this cpu is $cpu_arch."
+	exit
+fi
+
+py1=$(which python$version)
+echo "py1=$py1"
 
 myid=$(id -u)
+echo "myid=$myid"
+echo "EUID=$EUID"
 
-sudoprefix=
-if (( $EUID != 0 )); then
-    sudoprefix="sudo"
-else
-    sudoprefix=""
+if [[ "$py1." == "." ]]
+then
+	if (( $EUID != 0 )); then
+		echo "Please rerun this script as sudo to install the requirements."
+		echo "After your run this script as sudo you will need to run it again without sudo to push your images to ECR."
+		exit
+	fi
+    echo "\$py1 is empty which means Python is not installed."
+    apt update -y
+    apt install software-properties-common -y
+    echo -ne '\n' | add-apt-repository ppa:deadsnakes/ppa
+    apt install python3.9 -y
+	apt install python3.9-distutils -y
+	echo "All the requirements have been installed as sudo. Now you may restart this script to push your images to ECR."
+	exit
 fi
+
+if (( $EUID == 0 )); then
+	echo "Please rerun this script without sudo. All the requirements have been installed."
+	exit
+fi
+
+py1=$(which python$version)
+echo "py1=$py1"
 
 if [ -z "$py1" ]
 then
-    echo "\$py1 is empty"
-    $sudoprefix apt update -y
-    $sudoprefix apt install software-properties-common -y
-    $sudoprefix echo -ne '\n' | add-apt-repository ppa:deadsnakes/ppa
-    $sudoprefix apt install python3.9 -y
-	$sudoprefix apt install python3.9-distutils -y
-fi
-
-py1=$(whereis python | grep 3.9)
-
-if [ -z "$py1" ]
-then
-    echo ""
+	echo "Please rerun this script as sudo. The requirements have not been installed. Please install them."
+	exit
 else
     echo "Python v$version has been installed."
-    py39=$(which python3.9)
+    py39=$(which python$version)
     echo "py39 -> $py39"
-    #$sudoprefix apt-get install python3-pip -y
-	$py39 ./get-pip.py
     pypip3=$(which pip3)
     echo "pypip3 -> $pypip3"
+	if [ -z "$pypip3" ]
+	then
+		$py39 ./get-pip.py
+		export PATH=/home/ubuntu/.local/bin:$PATH
+	fi
     $pypip3 --version
-    $pypip3 install virtualenv
-    $pypip3 list
+    pipv=$($pypip3 list | grep virtualenv)
+    echo "pipv -> $pipv"
+	if [ -z "$pipv" ]
+	then
+		$pypip3 install virtualenv
+	fi
     v=$($py39 -c 'import sys; i=sys.version_info; print("{}{}{}".format(i.major,i.minor,i.micro))')
     echo "Use this -> $py39 --> $v"
     VENV=$VENV$v
