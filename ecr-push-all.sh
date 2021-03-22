@@ -22,6 +22,7 @@ then
     $sudoprefix apt install software-properties-common -y
     $sudoprefix echo -ne '\n' | add-apt-repository ppa:deadsnakes/ppa
     $sudoprefix apt install python3.9 -y
+	$sudoprefix apt install python3.9-distutils -y
 fi
 
 py1=$(whereis python | grep 3.9)
@@ -33,7 +34,8 @@ else
     echo "Python v$version has been installed."
     py39=$(which python3.9)
     echo "py39 -> $py39"
-    $sudoprefix apt-get install python3-pip -y
+    #$sudoprefix apt-get install python3-pip -y
+	$py39 ./get-pip.py
     pypip3=$(which pip3)
     echo "pypip3 -> $pypip3"
     $pypip3 --version

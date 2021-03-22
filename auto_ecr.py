@@ -296,13 +296,17 @@ if (__name__ == '__main__'):
     
     logger.info('Checking for aws creds.')
     result = subprocess.run(__cat_aws_creds__, stdout=subprocess.PIPE)
-    resp = handle_stdin(result.stdout, callback2=handle_cat_aws_creds, verbose=False)
-    assert resp == True, 'Cannot verify the aws creds.  Please resolve.'
+    resp = handle_stdin(result.stdout, callback2=handle_cat_aws_creds, verbose=True)
+    if (resp != True):
+        os.mkdir(os.path.dirname(__aws_creds_dest__))
+        Path(__aws_creds_dest__).touch()
 
     logger.info('Checking for aws config.')
     result = subprocess.run(__cat_aws_config__, stdout=subprocess.PIPE)
-    resp = handle_stdin(result.stdout, callback2=handle_cat_aws_config, verbose=False)
-    assert resp == True, 'Cannot verify the aws config.  Please resolve.'
+    resp = handle_stdin(result.stdout, callback2=handle_cat_aws_config, verbose=True)
+    if (resp != True):
+        os.mkdir(os.path.dirname(__aws_config_dest__))
+        Path(__aws_config_dest__).touch()
 
     if (0):
         logger.info('Using the aws creds.')
