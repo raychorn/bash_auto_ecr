@@ -42,9 +42,9 @@ __aws_cli_ecr_create_repo__ = ['aws', 'ecr', 'create-repository', '--repository-
 
 __aws_cmd_ecr_delete_repo__ = 'aws ecr delete-repository --repository-name {} --force'
 
-__docker_tag_cmd__ = 'docker tag {} {}:latest'
+__docker_tag_cmd__ = 'docker tag {} {}:{}'
 
-__docker_push_cmd__ = 'docker push {}:latest'
+__docker_push_cmd__ = 'docker push {}:{}'
 
 __docker_remove_container_by_id__ = 'docker container rm {}'
 
@@ -408,7 +408,7 @@ if (__name__ == '__main__'):
                         __is__ = True
                         continue
                 if (not __is__):
-                    create_the_repos.append({'name':possible_repo_name.split('/')[-1], 'id': image_id})
+                    create_the_repos.append({'name':possible_repo_name.split('/')[-1], 'tag': image_name.split(':')[-1], 'id': image_id})
                     
         print(json.dumps({'create_the_repos': create_the_repos}, indent=3))
         
@@ -416,9 +416,11 @@ if (__name__ == '__main__'):
             issues_count = 0
             try:
                 _id = vector.get('id')
-                assert _id is not None, 'Problem with getting the image id from the vector. Please fix.'
+                assert _id is not None, 'Problem with getting the image id from the docker image. Please fix.'
                 name = vector.get('name')
-                assert name is not None, 'Problem with getting the image name from the vector. Please fix.'
+                assert name is not None, 'Problem with getting the image name from the docker image. Please fix.'
+                tag = vector.get('tag')
+                assert tag is not None, 'Problem with getting the image tag from the docker image. Please fix.'
 
                 logger.info('Create ECR repo "{}"'.format(name))
                 cmd = [str(c).replace('{}', name) for c in __aws_cli_ecr_create_repo__]
@@ -429,7 +431,7 @@ if (__name__ == '__main__'):
                 repo_uri = resp.get('repository', {}).get('repositoryUri')
                 assert repo_uri is not None, 'Cannot tag "{}".  Please resolve.'.format(name)
 
-                cmd = __docker_tag_cmd__.format(_id, repo_uri)
+                cmd = __docker_tag_cmd__.format(_id, repo_uri, tag)
                 result = subprocess.run(cmd.split(), stdout=subprocess.PIPE)
                 resp = handle_stdin(result.stdout, callback2=None, verbose=False, is_json=False)
 
@@ -438,7 +440,7 @@ if (__name__ == '__main__'):
                 resp = handle_stdin(result.stdout, callback2=None, verbose=True, is_json=False)
                 assert resp == __expected_aws_docker_login__, 'Cannot login for docker "{}".  Please resolve.'.format(cmd)
                 
-                cmd = __docker_push_cmd__.format(repo_uri)
+                cmd = __docker_push_cmd__.format(repo_uri, tag)
                 logger.info('BEGIN: {}'.format(cmd))
                 logger.info('\t\tPlease be patient this will take some time.')
                 result = subprocess.run(cmd.split(), stdout=subprocess.PIPE)

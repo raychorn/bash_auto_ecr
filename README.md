@@ -73,6 +73,12 @@ sudo ./ecr-push-all.sh
 
 ## Usage <a name = "usage"></a>
 
-Add notes about how to use the system.
+### Command Line options
+
+#### --clean-ecr
+
+```
+removes all known repos from the ECR - this is for development purposes only.
+```
 
 (c). Copyright 2021, Ray C Horn, All Rights Reserved.
